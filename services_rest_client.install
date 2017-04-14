@@ -1,0 +1,114 @@
+<?php
+// include_once 'includes/services_rest_client.field_base.inc';
+// include_once 'includes/services_rest_client.field_instance.inc';
+
+
+function services_rest_client_install() {
+  node_types_rebuild();
+  foreach (_services_rest_client_installed_fields() as $field) {
+    field_create_field($field);
+  }
+  foreach (_services_rest_client_installed_instances() as $fieldinstance) {
+    field_create_instance($fieldinstance);
+  } 
+}
+
+
+function services_rest_client_schema() {
+
+	$schema['services_rest_client_node_link'] = array(
+	  'description' => 'Link client and service nodes',
+	  'fields' => array(
+	    'id' => array(
+	      'description' => 'Primary key',
+	      'type' => 'serial',
+	      'unsigned' => TRUE,
+	      'not null' => TRUE,
+	    ),
+	    'service_site_id' => array(
+	      'description' => 'Link client to website',
+	      'type' => 'varchar',
+	      'length' => '100',
+	      'not null' => TRUE,
+	    ),    
+	    'client_nid' => array(
+	      'description' => 'Client node id',
+	      'type' => 'int',
+	      'not null' => TRUE,
+	    ),
+	    'service_nid' => array(
+	      'description' => 'Service node id',
+	      'type' => 'int',
+	      'not null' => TRUE,
+	    ),
+	  ),
+	  'primary key' => array('id'),
+	);
+
+	$schema['services_rest_client_vocab_link'] = array(
+	  'description' => 'Link client and service taxonomy vocabulary',
+	  'fields' => array(
+	    'id' => array(
+	      'description' => 'Primary key',
+	      'type' => 'serial',
+	      'unsigned' => TRUE,
+	      'not null' => TRUE,
+	    ),
+	    'service_site_id' => array(
+	      'description' => 'Link client to website',
+	      'type' => 'varchar',
+	      'length' => '100',
+	      'not null' => TRUE,
+	    ),   	    
+	    'client_vid' => array(
+	      'description' => 'Client taxonomy vocabulary id',
+	      'type' => 'int',
+	      'not null' => TRUE,
+	    ),
+	    'service_vid' => array(
+	      'description' => 'Service taxonomy vocabulary id',
+	      'type' => 'int',
+	      'not null' => TRUE,
+	    ),
+	  ),
+	  'primary key' => array('id'),
+	);
+
+	$schema['services_rest_client_term_link'] = array(
+	  'description' => 'Link client and service taxonomy term',
+	  'fields' => array(
+	    'id' => array(
+	      'description' => 'Primary key',
+	      'type' => 'serial',
+	      'unsigned' => TRUE,
+	      'not null' => TRUE,
+	    ),
+	    'service_site_id' => array(
+	      'description' => 'Link client to website',
+	      'type' => 'varchar',
+	      'length' => '100',
+	      'not null' => TRUE,
+	    ),   	    
+	    'client_tid' => array(
+	      'description' => 'Client taxonomy term id',
+	      'type' => 'int',
+	      'not null' => TRUE,
+	    ),
+	    'client_vid' => array(
+	      'description' => 'Client taxonomy term id',
+	      'type' => 'int',
+	      'not null' => TRUE,
+	    ),
+	    'service_tid' => array(
+	      'description' => 'Service taxonomy term id',
+	      'type' => 'int',
+	      'not null' => TRUE,
+	    ),
+	  ),
+	  'primary key' => array('id'),
+	);
+
+	return $schema;
+}
+
+

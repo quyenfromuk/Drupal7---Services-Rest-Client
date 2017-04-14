@@ -1,0 +1,336 @@
+<?php
+require_once('classes/EntityDataLink.class.php');
+require_once('classes/Client.class.php');
+require_once('classes/NodeUtility.class.php');
+require_once('classes/VocabularyUtility.class.php');
+require_once('classes/TermUtility.class.php');
+require_once('classes/EntityOperation.class.php');
+require_once('classes/FileOperation.class.php');
+require_once('classes/ClientConnection.class.php');
+require_once('classes/FileConnection.class.php');
+
+/*
+** Import views
+** Intructions: place all views to be imported inside module views folder
+*/
+function services_rest_client_views_api() {
+  return array ('api' => 3.0);
+}
+
+function services_rest_client_views_default_views() {
+$views = array();
+$files = file_scan_directory(drupal_get_path('module', 'services_rest_client') . '/views', '/.*\.inc$/');
+foreach ($files as $filepath => $file) {
+  require $filepath;
+  if (isset($view)) {
+    // if view already exists delete it and then import any new version
+    if (array_key_exists($view->name, $views)) {
+      $view = views_get_view($view->name);
+      if($view){
+        views_delete_view($view);
+      }
+    } 
+    $views[$view->name] = $view;
+  }
+}
+return $views;  
+}
+
+
+/*
+** Generate Admin 
+*/
+function services_rest_client_node_info() {
+  $items = array(
+    'src_actionresource' => array(
+      'name' => t('Services REST Client Action Resource'),
+      'base' => 'node_content',
+      'description' => t('Defines an action resource to consume services module REST API'),
+      'has_title' => '1',
+      'title_label' => t('Action Resource Title'),
+      'help' => '',
+    ),
+  );
+  drupal_alter('node_info', $items);
+  return $items;
+}
+
+
+
+function services_rest_client_menu() {
+
+  $items = array();
+
+  $items['admin/config/services/services_rest_client'] = array(
+    'title' => 'Services Rest Client (NYU Shanghai)',
+    'description' => 'Services module specific Rest client module',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('services_rest_client_admin_settings'),
+    'access arguments' => array('administer site configuration')
+  );
+
+  $items['admin/config/services/services_rest_client/configuration'] = array(
+    'title' => 'Configuration',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10
+  );
+
+  $items['admin/config/services/services_rest_client/actions'] = array(
+    'title' => 'Action Resources',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'services_rest_client_admin_actionslist',
+    'access arguments' => array('administer site configuration')
+  );
+
+
+  $items['admin/config/services/services_rest_client/operations'] = array(
+    'title' => 'Operations',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('services_rest_client_admin_operations'),
+    'access arguments' => array('administer site configuration')
+  );
+
+
+  $items['admin/config/services/services_rest_client/entity_link/%/%/%/%'] = array(
+    'title' => 'Link Resource',
+    'page_callback' => 'drupal_get_form',
+    'page arguments' => array('services_rest_client_entity_link_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_CALLBACK
+  );
+
+
+  return $items;
+}
+
+
+function services_rest_client_admin_settings() {
+
+  $services_rest_client_siteid = variable_get("services_rest_client_site_id");
+  $services_rest_client_baseurl = variable_get("services_rest_client_baseurl");
+  $services_rest_client_username = variable_get("services_rest_client_username");
+  $services_rest_client_password = variable_get("services_rest_client_password");
+
+  $form = array();
+
+  $form['services_rest_client_text'] = array(
+    '#markup' => '<p>Global services login for all action resources.  This can be overidden for each action resource</p>'
+  );  
+
+
+  $form['services_rest_client_site_id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Site Id'),
+    '#default_value' => $services_rest_client_siteid,
+    '#size' => 40,
+    '#description' => t("The target website id which data should be pushed.  <br/>I.e: faculty, research, students etc"),
+    '#required' => FALSE
+  );  
+
+  $form['services_rest_client_baseurl'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Base services REST API URL end point'),
+    '#default_value' => $services_rest_client_baseurl,
+    '#size' => 40,
+    '#description' => t("E.g: http://mywebsitename.com/rest/<br/>Include trailing slash"),
+    '#required' => FALSE
+  );
+
+  $form['services_rest_client_username'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Username to remotely login to services API'),
+    '#default_value' => $services_rest_client_username,
+    '#size' => 40,
+    '#description' => t("This is your login name for services website"),
+    '#required' => FALSE
+  );  
+
+
+  $form['services_rest_client_password'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Password to remotely login to services API'),
+    '#default_value' => $services_rest_client_password,
+    '#size' => 40,
+    '#description' => t("This is your login password for services website"),
+    '#required' => FALSE
+  );
+
+
+  return system_settings_form($form);
+}
+
+function services_rest_client_admin_actionslist() {
+  $name ='services_rest_client_action_resources';
+  return views_embed_view($name);
+}
+
+function services_rest_client_admin_operations() {}
+
+
+
+/**
+* data migrate form
+**/
+function services_rest_client_entity_link_form($form, $form_state)
+{
+  $form['text_summary'] = array(
+    '#markup' => '<h2>Link Data</h2>'
+  );  
+
+  $form['text_site_link'] = array(
+    '#markup' => '<p>Link the data of resource type: <b>'.arg(8).'</b>, entity type: <b>'.arg(7).'</b> between this site and the site with id: <b>'.arg(6).'</b><br/><br/></p>'
+  );  
+ 
+
+  $form['init'] = array(
+    '#type' => 'hidden',
+    '#name' => 'init',
+    '#default_value' => arg(5),
+    '#size' => 20,
+    '#disabled' => TRUE,
+    '#required' => TRUE
+  );
+
+
+  $form['field_src_site_id'] = array(
+    '#type' => 'hidden',
+    '#name' => 'field_src_site_id',
+    '#default_value' => arg(6),
+    '#size' => 20,
+    '#disabled' => TRUE,
+    '#required' => TRUE
+  );
+
+  $form['field_src_entity_type'] = array(
+    '#type' => 'hidden',
+    '#name' => 'field_src_entity_type',
+    '#default_value' => arg(7),
+    '#size' => 20,
+    '#disabled' => TRUE,
+    '#required' => TRUE
+  );  
+
+
+  $form['field_src_resource_type'] = array(
+    '#type' => 'hidden',
+    '#name' => 'field_src_resource_type',
+    '#default_value' => arg(8),
+    '#size' => 20,
+    '#disabled' => TRUE,
+    '#required' => TRUE
+  );  
+
+  $form['submit_button'] = array(
+    '#type' => 'submit',
+    '#value' => t('Link Data'),
+  );
+  
+  return $form;
+}
+
+function services_rest_client_entity_link_form_validate($form, &$form_state)
+{
+  // drupal_set_message('<pre>'.print_r($form, true).'</pre>');
+  if($form_state['values']['form_id'] != 'services_rest_client_entity_link_form')
+    form_set_error('fform_id', t('form id incorrect'));
+
+  if(empty($form_state['values']['init']))
+    form_set_error('init', t('init param missing'));  
+
+  if(empty($form_state['values']['field_src_site_id']))
+    form_set_error('field_src_site_id', t('site id missing'));
+
+  if(empty($form_state['values']['field_src_entity_type']))
+    form_set_error('field_src_entity_type', t('entity type missing'));  
+
+  if(empty($form_state['values']['field_src_resource_type']))
+    form_set_error('field_src_resource_type', t('resource type missing'));
+
+}
+
+function services_rest_client_entity_link_form_submit($form, &$form_state)
+{
+  $init = $form_state['values']['init'];
+  $site_id = $form_state['values']['field_src_site_id'];
+  $entity_type = $form_state['values']['field_src_entity_type'];
+  $resource_type = $form_state['values']['field_src_resource_type'];
+  $entityDataLink = new EntityDataLink();
+  $nodeLink = $entityDataLink->LinkData($init, $site_id, $entity_type, $resource_type);
+}
+
+
+/**
+* Pusing data for nodes
+**/
+function services_rest_client_node_insert($node)
+{
+  $node_utility = new NodeUtility();
+  $node_utility->nodeInsert($node);  
+}
+
+function services_rest_client_node_update($node)
+{
+  $node_utility = new NodeUtility();
+  $node_utility->nodeUpdate($node);  
+}
+
+function services_rest_client_node_delete($node) {
+  $node_utility = new NodeUtility();
+  $node_utility->nodeDelete($node); 
+}
+
+/**
+* Pushing data for entities
+**/
+
+function services_rest_client_entity_insert($entity, $type) 
+{
+  if($type == 'node' || $type == 'file'){
+    return;
+  }
+  if($type == 'taxonomy_vocabulary')
+  {
+    $vocab_utility = new VocabularyUtility();
+    $vocab_utility->vocabularyInsert($entity, $type);
+  }
+  if($type == 'taxonomy_term')
+  {
+    $vocab_utility = new TermUtility();
+    $vocab_utility->termInsert($entity, $type);    
+  }
+}
+
+function services_rest_client_entity_update($entity, $type) 
+{
+  if($type == 'node' || $type == 'file'){
+    return;
+  }
+  if($type == 'taxonomy_vocabulary')
+  {
+    $vocab_utility = new VocabularyUtility();
+    $vocab_utility->vocabularyUpdate($entity, $type);
+  }
+  if($type == 'taxonomy_term')
+  {
+    $vocab_utility = new TermUtility();
+    $vocab_utility->termUpdate($entity, $type);    
+  }  
+}
+
+function services_rest_client_entity_delete($entity, $type) {
+  if($type == 'node' || $type == 'file'){
+    return;
+  }
+  if($type == 'taxonomy_vocabulary')
+  {
+    $vocab_utility = new VocabularyUtility();
+    $vocab_utility->vocabularyDelete($entity, $type);
+  }
+  if($type == 'taxonomy_term')
+  {
+    $vocab_utility = new TermUtility();
+    $vocab_utility->termDelete($entity, $type);    
+  }  
+}
+

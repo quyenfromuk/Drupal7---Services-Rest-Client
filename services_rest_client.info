@@ -1,0 +1,11 @@
+name = Services Rest Client
+description = REST data exchange with Drupal Services module (Developed by NYU Shanghai)
+core = 7.x
+dependencies[] = conditional_fields
+dependencies[] = unique_field
+dependencies[] = views
+dependencies[] = views_base_url
+dependencies[] = password_field
+;files[] = classes/*.php
+;files[] = includes/*.inc
+configure = admin/config/services/services_rest_client/settings
