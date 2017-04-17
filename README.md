@@ -23,3 +23,5 @@ It can also be used for data migration.  You can bulk migrate date to other prot
 
 Amazon S3 File Storage:
 Pushed content files may be stored on Amazon S3.  However, portal site pulling content will only store and reference files natively within its server instance
+
+For further instructions on how to use this module, please see: https://github.com/quyenfromuk/Drupal7---Services-Rest-Client/blob/master/Drupal7-Services-Rest-Client-Module-Instructions.pdf
